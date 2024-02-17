@@ -1,0 +1,98 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: linkding
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litestream
+  namespace: linkding
+data:
+  litestream.yml: |
+    dbs:
+      - path: '/etc/linkding/data/db.sqlite3'
+        replicas:
+          - type: s3
+            bucket: '$S3_BUCKET'
+            path: '$S3_PATH'
+            endpoint: '$S3_ENDPOINT'
+            force-path-style: true
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: linkding
+  namespace: linkding
+  labels:
+    app: linkding
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: linkding
+  template:
+    metadata:
+      labels:
+        app: linkding
+    spec:
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: litestream-config
+          configMap:
+            name: litestream
+            items:
+            - key: litestream.yml
+              path: litestream.yml
+      initContainers:
+        - name: init-litestream
+          image: litestream/litestream:latest
+          args: ['restore', '/etc/linkding/data/db.sqlite3']
+          envFrom:
+          - secretRef:
+              name: litestream-s3
+          volumeMounts:
+            - name: data
+              mountPath: /etc/linkding/data
+            - name: litestream-config
+              mountPath: /etc/litestream.yml
+              subPath: litestream.yml
+      containers:
+        - name: litestream
+          image: litestream/litestream:latest
+          args: ['replicate']
+          envFrom:
+          - secretRef:
+              name: litestream-s3
+          volumeMounts:
+            - name: data
+              mountPath: /etc/linkding/data
+            - name: litestream-config
+              mountPath: /etc/litestream.yml
+              subPath: litestream.yml
+        - name: linkding
+          image: sissbruecker/linkding:latest
+          ports:
+            - containerPort: 9090
+              name: http
+          volumeMounts:
+            - name: data
+              mountPath: /etc/linkding/data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: linkding
+  namespace: linkding
+  annotations:
+    tailscale.com/expose: "true"
+    tailscale.com/hostname: "linkding"
+spec:
+  selector:
+    app: linkding
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
