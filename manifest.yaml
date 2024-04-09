@@ -49,7 +49,7 @@ spec:
       initContainers:
         - name: init-litestream
           image: litestream/litestream:latest
-          args: ['restore', '/etc/linkding/data/db.sqlite3']
+          args: ['restore', '-if-db-not-exists', '/etc/linkding/data/db.sqlite3']
           envFrom:
           - secretRef:
               name: litestream-s3
