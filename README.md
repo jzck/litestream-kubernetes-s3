@@ -2,7 +2,7 @@ Inspired by [linkding on fly.io](https://github.com/fspoettel/linkding-on-fly)
 
 ## Storing the state in s3
 
-You'll an s3 compatible bucket, like backblaze, aws, cloudflare or any compatible provider. Litestream will restore the bucket in an `emptyDir`. Then during operation a `litestream` sidecar will live replicate the changes to s3.
+You'll need an s3 compatible bucket, like backblaze, aws, cloudflare or any compatible provider. Litestream will restore the bucket in an `emptyDir`. Then during operation a `litestream` sidecar will live replicate the changes to s3.
 
 ## Contents of `manifest.yaml`
 
